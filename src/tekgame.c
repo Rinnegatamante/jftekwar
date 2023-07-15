@@ -12,6 +12,45 @@
 
 #define   SECT_LOTAG_CLIMB                    5060
 
+#include <dirent.h>
+
+char patched_fname[512];
+char *patch_fname(char *fname) {
+	if (strstr(fname, "ux0")) {
+		char *s = strstr(fname, ".");
+		if (s)
+			fname = s;
+		else
+			return fname;
+	} 
+	
+	if (fname[0] == '.') {
+		char *s = strstr(fname, "/");
+		if (s)
+			fname = s + 1;
+		else
+			fname++;
+	}
+	sprintf(patched_fname, "ux0:data/jftekwar/%s", fname);
+	return patched_fname;
+}
+
+int __wrap_access(const char *fname, int mode) {
+	return __real_access(patch_fname(fname), mode);
+}
+
+FILE *__wrap_fopen(char *fname, char *mode) {
+	return __real_fopen(patch_fname(fname), mode);
+}
+
+int __wrap_open(const char *fname, int mode) {
+	return __real_open(patch_fname(fname), mode);
+}
+
+DIR *__wrap_opendir(const char *fname) {
+	return __real_opendir(patch_fname(fname));
+}
+
 #ifdef    TEKWAR
 FILE      *dbgfp;
 int       dbgfilen;
@@ -83,7 +122,7 @@ int keys[NUMKEYS] = {
       20,         // 24 TOGGLE ELAPSED TIME
       31,         // 25 TOGGLE SCORE
       23,         // 26 TOGGLE INVENTORY
-      53,         // 27 CONCEAL WEAPON
+      38,         // 27 CONCEAL WEAPON
       58,         // 28 MOUSE LOOKUP/DOWN
       26,         // 29 N/U
       26,         // 30 N/U
@@ -370,10 +409,10 @@ app_main(int argc, char const * const argv[])
      buildsetlogfile("tekwar.log");
 
      wm_setapptitle("JFTekWar");
-     buildprintf("\nJFTekWar\n"
-          "Based on " TITLE "\n"
+     buildprintf("\nJFTekWar\n");
+          /*"Based on " TITLE "\n"
           "Version %s.\nBuilt %s %s.\n",
-        VERS, game_version, game_date, game_time);
+        VERS, game_version, game_date, game_time);*/
 
      if (preinitengine()) {
           wm_msgbox("Build Engine Initialisation Error",
