@@ -3,12 +3,14 @@ TITLE		:= JFTEKWAR1
 GIT_VERSION := $(shell git describe --abbrev=6 --dirty --always --tags)
 SHADERS     := shaders
 
-LIBS = -lvitaGL -lvitashark -lmathneon -lvorbisfile -lvorbis -logg  -lspeexdsp -lmpg123 -lSceShaccCgExt \
-	-lSDL2 -lc -lSceCommonDialog_stub -lSceAudio_stub -lSceLibKernel_stub -lSceShaccCg_stub \
+SDL_LIBS := $(shell arm-vita-eabi-pkg-config --static --libs sdl2)
+
+LIBS = -Wl,--start-group -lvitaGL -lvitashark -lmathneon -lvorbisfile -lvorbis -logg  -lspeexdsp -lmpg123 -lSceShaccCgExt \
+	$(SDL_LIBS) -lc -lSceCommonDialog_stub -lSceAudio_stub -lSceLibKernel_stub -lSceShaccCg_stub \
 	-lSceNet_stub -lSceNetCtl_stub -lpng -lSceDisplay_stub -lSceGxm_stub -lSceHid_stub -ltaihen_stub \
 	-lSceSysmodule_stub -lSceCtrl_stub -lSceTouch_stub -lSceMotion_stub -lm -lSceAppMgr_stub \
 	-lSceAppUtil_stub -lScePgf_stub -ljpeg -lSceRtc_stub -lScePower_stub -lcurl -lssl -lcrypto -lz \
-	-lSceKernelDmacMgr_stub -lSceIme_stub -lSceAudioIn_stub
+	-lSceKernelDmacMgr_stub -lSceIme_stub -lSceAudioIn_stub -Wl,--end-group
 
 # build locations
 SRC=src
@@ -89,6 +91,10 @@ GAMEOBJS= \
 	$(SRC)/tekver.o \
 	$(LIBSMACKEROBJ)
 
+JFBUILDOBJS += $(addprefix $(ESRC)/,glbuild_fs.o glbuild_vs.o polymost_fs.o polymost_vs.o polymostaux_fs.o polymostaux_vs.o polymosttexcompress.o rg_etc1.o) \
+	$(addprefix $(EROOT)/libsquish/,alpha.o clusterfit.o colourblock.o colourfit.o colourset.o maths.o rangefit.o singlecolourfit.o squish.o)
+GAMEOBJS += rsrc/sdlappicon_game.o
+
 OBJS     := $(GAMEOBJS) $(JFBUILDOBJS) $(JFAUDIOLIBOBJS)
 
 PREFIX  = arm-vita-eabi
@@ -99,6 +105,7 @@ CFLAGS  = -fsigned-char -Wl,-q,--wrap,fopen,--wrap,opendir,--wrap,open,--wrap,ac
 	-ffast-math -mtune=cortex-a9 -mfpu=neon -DHAVE_VORBIS -Isrc -Ilibsmacker \
 	-Ijfbuild/include -Ijfmact -Ijfaudiolib/include -DVITA -DHAVE_SDL \
 	-Wno-implicit-function-declaration -I$(VITASDK)/$(PREFIX)/include/SDL2
+CFLAGS += -DB_LITTLE_ENDIAN=1 -DB_BIG_ENDIAN=0 -DB_ENDIAN_C_INLINE=1 -I$(EROOT)/libsquish
 
 CXXFLAGS  = $(CFLAGS) -fno-exceptions -std=gnu++11
 ASFLAGS = $(CFLAGS)
@@ -106,6 +113,7 @@ ASFLAGS = $(CFLAGS)
 all: $(TARGET).vpk
 
 $(TARGET).vpk: $(TARGET).velf
+	mkdir -p build
 	vita-make-fself -c -s $< build/eboot.bin
 	vita-mksfoex -s TITLE_ID=$(TITLE) -d ATTRIBUTE2=12 "William Shatner's TekWar" param.sfo
 	vita-pack-vpk -s param.sfo -b build/eboot.bin \
@@ -122,6 +130,9 @@ $(TARGET).vpk: $(TARGET).velf
 
 $(TARGET).elf: $(OBJS)
 	$(CXX) $(CXXFLAGS) $^ $(LIBS) -o $@
+
+$(ESRC)/%.c: $(ESRC)/%.glsl
+	perl $(EROOT)/tools/text2c.pl $< default_$*_glsl > $@
 
 clean:
 	@rm -rf $(TARGET).velf $(TARGET).elf $(OBJS) $(TARGET).elf.unstripped.elf $(TARGET).vpk build/eboot.bin ./param.sfo

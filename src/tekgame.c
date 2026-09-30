@@ -14,6 +14,11 @@
 
 #include <dirent.h>
 
+extern int __real_access(const char *path, int mode);
+extern FILE *__real_fopen(const char *path, const char *mode);
+extern int __real_open(const char *path, int flags, ...);
+extern DIR *__real_opendir(const char *path);
+
 char patched_fname[512];
 char *patch_fname(char *fname) {
 	if (strstr(fname, "ux0")) {
@@ -76,6 +81,7 @@ int vel, svel, angvel;
 int vel2, svel2, angvel2;
 
 int recording = -2;
+int nextvoxid = 0;
 
 #ifdef    TEKWAR
 int xdimgame = 640, ydimgame = 480, bppgame = 8;
